@@ -1,0 +1,88 @@
+Aim: Feed Forward Backpropagation Neural Network.
+
+CODE:
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+
+# 1. Load dataset
+titanic = fetch_openml(name="titanic", version=1, as_frame=True)
+df = titanic.frame
+
+# 2. Select features and clean data
+features = ["pclass", "sex", "age", "sibsp", "parch", "fare", "embarked"]
+df = df[features + ["survived"]].copy()
+df["survived"] = df["survived"].astype(int)
+df["age"] = df["age"].fillna(df["age"].median())
+df["fare"] = df["fare"].fillna(df["fare"].median())
+df["embarked"] = df["embarked"].fillna(df["embarked"].mode()[0])
+df["sex"] = LabelEncoder().fit_transform(df["sex"].astype(str))
+df["embarked"] = LabelEncoder().fit_transform(df["embarked"].astype(str))
+
+X = df[features]
+y = df["survived"]
+
+# 3. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 42)
+
+# 4. Scale features (neural nets train via gradient descent -> sensitive to feature scale)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# 5. Build the Feed Forward Neural Network
+model = keras.Sequential([
+    keras.layers.Input(shape=(X_train.shape[1],)),
+    keras.layers.Dense(16, activation="relu"),   
+    keras.layers.Dense(8, activation="relu"),    
+    keras.layers.Dense(1, activation="sigmoid"), 
+])
+
+# 6. Compile: define loss, optimizer (performs backpropagation), and metric
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+model.summary()
+
+# 7. Train the network (backpropagation happens here, each epoch)
+history = model.fit(
+    X_train, y_train,
+    validation_split=0.2,
+    epochs=100,
+    batch_size=16,
+    verbose=1,
+)
+
+# 8. Evaluate on test data
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=1)
+print("\nTest Accuracy :", test_acc)
+
+y_pred_prob = model.predict(X_test, verbose=0)
+y_pred = (y_pred_prob > 0.5).astype(int).flatten()
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# 9. Plot training vs validation accuracy/loss (shows backpropagation improving the network)
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+axes[0].plot(history.history["loss"], label="Training loss", color="#0E7C7B")
+axes[0].plot(history.history["val_loss"], label="Validation loss", color="#1F3864")
+axes[0].set_title("Loss over Epochs")
+axes[0].set_xlabel("Epoch")
+axes[0].set_ylabel("Loss")
+axes[0].legend()
+
+axes[1].plot(history.history["accuracy"], label="Training accuracy", color="#0E7C7B")
+axes[1].plot(history.history["val_accuracy"], label="Validation accuracy", color="#1F3864")
+axes[1].set_title("Accuracy over Epochs")
+axes[1].set_xlabel("Epoch")
+axes[1].set_ylabel("Accuracy")
+axes[1].legend()
+
+plt.tight_layout()
+plt.savefig("nn_training_curves.png", dpi=150, bbox_inches="tight")
+plt.show()
+

@@ -1,0 +1,57 @@
+Aim: Support Vector Machines (SVM).
+
+CODE:
+import pandas as pd
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# 1. Load dataset
+titanic = fetch_openml(name="titanic", version=1, as_frame=True)
+df = titanic.frame
+
+# 2. Select features and clean data
+features = ["pclass", "sex", "age", "sibsp", "parch", "fare", "embarked"]
+df = df[features + ["survived"]].copy()
+
+df["survived"] = df["survived"].astype(int)
+df["age"] = df["age"].fillna(df["age"].median())
+df["fare"] = df["fare"].fillna(df["fare"].median())
+df["embarked"] = df["embarked"].fillna(df["embarked"].mode()[0])
+
+df["sex"] = LabelEncoder().fit_transform(df["sex"].astype(str))
+df["embarked"] = LabelEncoder().fit_transform(df["embarked"].astype(str))
+
+X = df[features]
+y = df["survived"]
+
+# 3. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 4. Scale features (SVM is distance-based, so features must be on the same scale)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# 5. Optimize hyperparameters with GridSearchCV
+param_grid = {
+    "C": [0.1, 1, 10],
+    "kernel": ["linear", "rbf"],
+    "gamma": ["scale", "auto"],
+}
+grid = GridSearchCV(SVC(), param_grid, cv=5)
+grid.fit(X_train, y_train)
+
+print("Best parameters :", grid.best_params_)
+print("Best CV accuracy :", grid.best_score_)
+
+# 6. Train final model with best parameters
+model = grid.best_estimator_
+
+# 7. Evaluate on test data
+y_pred = model.predict(X_test)
+print("\nTest Accuracy :", accuracy_score(y_test, y_pred))
+print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))

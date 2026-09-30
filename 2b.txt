@@ -1,0 +1,93 @@
+2. Implement the Recursive Best-First Search algorithm for the same problem.
+CODE:
+import sys
+import time
+
+GRID = [
+    "S..#..",
+    ".#.#..",
+    ".#....",
+    ".#.###",
+    "...#..",
+    "##.#.G",
+]
+
+ROWS, COLS = len(GRID), len(GRID[0])
+START, GOAL = (0, 0), (5, 5)
+INF = float("inf")
+
+def neighbours(r, c):
+    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < ROWS and 0 <= nc < COLS and GRID[nr][nc] != "#":
+            yield (nr, nc)
+
+def h(cell):
+    return abs(cell[0] - GOAL[0]) + abs(cell[1] - GOAL[1])
+
+def rbfs():
+    sys.setrecursionlimit(2000)
+    expanded = 0
+
+    def search(cell, g, path, f_limit):
+        nonlocal expanded
+        expanded += 1
+
+        if expanded > 1000:
+            return None, None, INF
+            
+        if cell == GOAL:
+            return path, g, 0
+
+        children = []
+        for nxt in neighbours(*cell):
+            if nxt not in path:
+                f = max(g + 1 + h(nxt), g + h(cell))
+                children.append([f, g + 1, nxt])
+
+        if not children:
+            return None, None, INF
+
+        while True:
+            children.sort(key = lambda x: x[0])  # Best child first
+            best_f, best_g, best_cell = children[0]
+            if best_f > f_limit or best_f == INF:
+                return None, None, best_f
+
+            alt_f = children[1][0] if len(children) > 1 else INF
+            result, cost, new_f = search(
+                best_cell, best_g, path + [best_cell], min(f_limit, alt_f)
+            )
+            children[0][0] = new_f  # Update backed-up f-value
+
+            if result is not None:
+                return result, cost, 0
+    path, cost, _ = search(START, 0, [START], INF)
+    return path, cost, expanded
+
+def show(path):
+    for r in range(ROWS):
+        line = []
+        for c in range(COLS):
+            if (r, c) == START:   line.append("S")
+            elif (r, c) == GOAL:  line.append("G")
+            elif (r, c) in path:  line.append("*")
+            else:                 line.append(GRID[r][c])
+        print(" ".join(line))
+
+if __name__ == "__main__":
+    t0 = time.perf_counter()
+    path, cost, expanded = rbfs()
+    t1 = time.perf_counter()
+
+    if path:
+        print("Route found by RBFS:\n")
+        show(path)
+        print(f"\nPath taken     : {' -> '.join(str(c) for c in path)}")
+        print(f"Path cost      : {cost}")
+    else:
+        print("No path found or expansion limit exceeded.")
+
+    print(f"Nodes expanded : {expanded}")
+    print(f"Time taken     : {t1 - t0:.5f}s")
+    print("Memory used    : O(d) (Only current path stored)")

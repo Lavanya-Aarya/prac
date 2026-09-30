@@ -1,0 +1,55 @@
+Aim: Adaboost Ensemble Learning.
+
+CODE:
+import pandas as pd
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# 1. Load dataset
+titanic = fetch_openml(name="titanic", version=1, as_frame=True)
+df = titanic.frame
+
+# 2. Select features and clean data
+features = ["pclass", "sex", "age", "sibsp", "parch", "fare", "embarked"]
+df = df[features + ["survived"]].copy()
+
+df["survived"] = df["survived"].astype(int)
+df["age"] = df["age"].fillna(df["age"].median())
+df["fare"] = df["fare"].fillna(df["fare"].median())
+df["embarked"] = df["embarked"].fillna(df["embarked"].mode()[0])
+
+df["sex"] = LabelEncoder().fit_transform(df["sex"].astype(str))
+df["embarked"] = LabelEncoder().fit_transform(df["embarked"].astype(str))
+
+X = df[features]
+y = df["survived"]
+
+# 3. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 42)
+
+# 4. Single weak classifier (a "decision stump" - tree with depth 1)
+weak_learner = DecisionTreeClassifier(max_depth=1, random_state=42)
+weak_learner.fit(X_train, y_train)
+weak_pred = weak_learner.predict(X_test)
+weak_acc = accuracy_score(y_test, weak_pred)
+
+# 5. Adaboost ensemble of many weak stumps
+model = AdaBoostClassifier(
+    estimator=DecisionTreeClassifier(max_depth=1),
+    n_estimators=100,     
+    learning_rate=1.0,
+    random_state=42,
+)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+ada_acc = accuracy_score(y_test, y_pred)
+
+# 6. Compare individual weak classifier vs the ensemble
+print("Single weak classifier (1 stump) Accuracy :", weak_acc)
+print("Adaboost ensemble (100 stumps) Accuracy   :", ada_acc)
+print("\nAdaboost Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nAdaboost Classification Report:\n", classification_report(y_test, y_pred))

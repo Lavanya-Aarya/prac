@@ -1,0 +1,32 @@
+Aim: Association Rule Mining.
+
+CODE:
+import csv
+import pandas as pd
+from mlxtend.preprocessing import TransactionEncoder
+from mlxtend.frequent_patterns import apriori, association_rules
+
+transactions = []
+for row in csv.reader(open("C:\\Users\\ROHIT\\Desktop\\CODES\\AI Programs\\Market_Basket_Data.csv")):
+    items = [i.strip() for i in row if i.strip()]
+    if items:
+        transactions.append(items)
+
+te = TransactionEncoder()
+df = pd.DataFrame(te.fit_transform(transactions), columns=te.columns_)
+
+freq = apriori(df, min_support=0.01, use_colnames=True)
+rules = association_rules(freq, metric="confidence", min_threshold=0.25)
+
+result = pd.DataFrame({
+    "Antecedent": rules["antecedents"].apply(lambda s: ", ".join(sorted(s))),
+    "Consequent": rules["consequents"].apply(lambda s: ", ".join(sorted(s))),
+    "Support":    rules["support"].round(4),
+    "Confidence": rules["confidence"].round(3),
+    "Lift":       rules["lift"].round(3),
+})
+
+result = result.sort_values("Lift", ascending=False).reset_index(drop=True)
+result.index += 1                      
+print(result.head(10).to_string())
+result.to_csv("association_rules.csv", index_label="Rule")

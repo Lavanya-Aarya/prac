@@ -1,0 +1,80 @@
+Aim: A* Search and Recursive Best-First Search Algorithm.
+
+1. Implement a A* search algorithm for solving a pathfinding problem.
+CODE:
+import heapq
+import time
+
+GRID = [
+    "S..#..",
+    ".#.#..",
+    ".#....",
+    ".#.##.",
+    ".###..",
+    "##...G",
+]
+
+ROWS, COLS = len(GRID), len(GRID[0])
+START = (0, 0)
+GOAL = (5, 5)
+
+def neighbours(cell):
+    r, c = cell
+    out = []
+    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < ROWS and 0 <= nc < COLS and GRID[nr][nc] != "#":
+            out.append((nr, nc))
+    return out
+
+def h(cell):
+    return abs(cell[0] - GOAL[0]) + abs(cell[1] - GOAL[1])
+
+def astar():
+    expanded = 0
+    open_list = [(h(START), 0, START, [START])]
+    visited = set()
+
+    while open_list:
+        f, g, cell, path = heapq.heappop(open_list)
+        if cell in visited:
+            continue
+        visited.add(cell)
+        expanded += 1
+        if cell == GOAL:
+            return path, g, expanded
+
+        for nxt in neighbours(cell):
+            if nxt not in visited:
+                ng = g + 1
+                heapq.heappush(open_list, (ng + h(nxt), ng, nxt, path + [nxt]))
+    return None, None, expanded
+
+def show(path):
+    print("Route found by A*:")
+    for r in range(ROWS):
+        line = ""
+        for c in range(COLS):
+            if (r, c) == START:
+                line += "S "
+            elif (r, c) == GOAL:
+                line += "G "
+            elif (r, c) in path:
+                line += "* "
+            else:
+                line += GRID[r][c] + " "
+        print(line)
+
+if __name__ == "__main__":
+    t0 = time.perf_counter()
+    path, cost, expanded = astar()
+    t1 = time.perf_counter()
+    if path is None:
+        print("Goal is not reachable.")
+    else:
+        show(path)
+        print("\nPath cost      :", cost)
+        print("Path taken     :", " -> ".join(str(c) for c in path))
+    print("Nodes expanded :", expanded)
+    print("Time taken     :", t1 - t0)
+    print("Memory used    : whole frontier is stored  ->  O(b^d)")

@@ -1,0 +1,49 @@
+Aim: Breadth First Search & Iterative Depth First Search.
+
+1. Implement the Breadth First Search algorithm to solve a given problem.
+CODE:
+from collections import deque
+import time
+
+def min_stop_bfs(edges, start, goal):
+    if start == goal:
+        return 0
+
+    graph = {}
+    for a, b in edges:
+        graph.setdefault(a, []).append(b)
+        graph.setdefault(b, []).append(a)
+
+    visited = {start}
+    queue = deque([(start, 0)])
+    print(f"init: visited={visited}, queue={list(queue)}")
+
+    while queue:
+        node, dist = queue.popleft()
+        print(f"\npopleft() -> node = '{node}', dist = {dist} | queue now: {list(queue)}")
+
+        for neighbor in graph.get(node, []):
+            if neighbor not in visited:
+                if neighbor == goal:
+                    print(f"Reached goal '{goal}' at distance {dist + 1}")
+                    return dist + 1
+                
+                visited.add(neighbor)
+                queue.append((neighbor, dist + 1))
+                print(f"discover '{neighbor}' (dist = {dist + 1}) -> mark visited, enqueue | visited = {visited}")
+            else:
+                print(f"neighbor '{neighbor}' already visited -> skip")
+
+    return -1 
+
+if __name__ == "__main__":
+    n = int(input())
+    edges = [tuple(input().split()) for _ in range(n)]
+    start, goal = input().split()
+
+    t0 = time.perf_counter()
+    result = min_stop_bfs(edges, start, goal)
+    t1 = time.perf_counter()
+
+    print(f"Result: {result}")
+    print(f"[BFS] Time taken: {(t1 - t0) * 1000:.4f} ms", flush=True)
